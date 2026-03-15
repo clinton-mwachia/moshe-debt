@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"moshe-debt/models"
+	"moshe-debt/utils"
 	"strconv"
 	"time"
 
@@ -29,7 +30,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	initDB()
+	utils.InitDB(db)
 
 	a := app.NewWithID("moshe.debt")
 	w := a.NewWindow("Debt & Payments Management - Moshe Crafts")
@@ -44,25 +45,6 @@ func main() {
 
 	w.SetContent(tabs)
 	w.ShowAndRun()
-}
-
-// ---------------------- DB Initialization ----------------------
-func initDB() {
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS debts(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer TEXT,
-        phone TEXT,
-        amount REAL,
-		balance REAL
-    );`)
-
-	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS payments(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer TEXT,
-        amount REAL,
-        balance REAL,
-		created_at REAL
-    );`)
 }
 
 // ---------------------- Debt Tab ----------------------
