@@ -49,7 +49,7 @@ func main() {
 
 // ---------------------- Debt Tab ----------------------
 func buildDebtTab() fyne.CanvasObject {
-	loadDebts()
+	utils.LoadDebts(db, debts)
 
 	addDebtBtn := widget.NewButton("Add Debt", func() { showDebtDialog(nil) })
 
@@ -61,17 +61,6 @@ func buildDebtTab() fyne.CanvasObject {
 		container.NewHBox(addDebtBtn),
 		debtContainer,
 	)
-}
-
-func loadDebts() {
-	debts = nil
-	rows, _ := db.Query("SELECT id,customer,phone,amount,balance FROM debts")
-	defer rows.Close()
-	for rows.Next() {
-		var d models.Debt
-		rows.Scan(&d.ID, &d.Customer, &d.Phone, &d.Amount, &d.Balance)
-		debts = append(debts, d)
-	}
 }
 
 func buildDebtTable() *widget.Table {
@@ -180,7 +169,7 @@ func showDebtDialog(d *models.Debt) {
 
 // ---------------------- Payments Tab ----------------------
 func buildPaymentTab() fyne.CanvasObject {
-	loadPayments()
+	utils.LoadPayments(db, payments)
 
 	addPaymentBtn := widget.NewButton("Add Payment", func() { showPaymentDialog(nil) })
 
@@ -192,17 +181,6 @@ func buildPaymentTab() fyne.CanvasObject {
 		container.NewHBox(addPaymentBtn),
 		paymentContainer,
 	)
-}
-
-func loadPayments() {
-	payments = nil
-	rows, _ := db.Query("SELECT id,customer,amount,balance FROM payments")
-	defer rows.Close()
-	for rows.Next() {
-		var p models.Payment
-		rows.Scan(&p.ID, &p.Customer, &p.Amount, &p.Balance)
-		payments = append(payments, p)
-	}
 }
 
 func buildPaymentTable() *widget.Table {
@@ -276,6 +254,14 @@ func buildPaymentTable() *widget.Table {
 	table.SetColumnWidth(2, 100)
 	table.SetColumnWidth(3, 150)
 	return table
+}
+
+func loadDebts() {
+	utils.LoadDebts(db, debts)
+}
+
+func loadPayments() {
+	utils.LoadPayments(db, payments)
 }
 
 func showPaymentDialog(p *models.Payment) {
