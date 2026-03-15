@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"moshe-debt/models"
 	"strconv"
 	"time"
 
@@ -17,27 +18,9 @@ import (
 
 var db *sql.DB
 
-// Debt model
-type Debt struct {
-	ID       int
-	Customer string
-	Phone    string
-	Amount   float64
-	Balance  float64
-}
-
-// Payment model
-type Payment struct {
-	ID        int
-	Customer  string
-	Amount    float64
-	Balance   float64
-	CreatedAt string
-}
-
 // Global slices for UI
-var debts []Debt
-var payments []Payment
+var debts []models.Debt
+var payments []models.Payment
 var debtTable, paymentTable *widget.Table
 
 func main() {
@@ -103,7 +86,7 @@ func loadDebts() {
 	rows, _ := db.Query("SELECT id,customer,phone,amount,balance FROM debts")
 	defer rows.Close()
 	for rows.Next() {
-		var d Debt
+		var d models.Debt
 		rows.Scan(&d.ID, &d.Customer, &d.Phone, &d.Amount, &d.Balance)
 		debts = append(debts, d)
 	}
@@ -167,7 +150,7 @@ func buildDebtTable() *widget.Table {
 	return table
 }
 
-func showDebtDialog(d *Debt) {
+func showDebtDialog(d *models.Debt) {
 	a := fyne.CurrentApp()
 	w := a.Driver().AllWindows()[0]
 
@@ -198,7 +181,7 @@ func showDebtDialog(d *Debt) {
 				res, _ := db.Exec("INSERT INTO debts(customer,phone,amount,balance) VALUES(?,?,?,?)",
 					customerEntry.Text, phoneEntry.Text, amt, amt)
 				id, _ := res.LastInsertId()
-				debts = append(debts, Debt{ID: int(id), Customer: customerEntry.Text, Phone: phoneEntry.Text, Amount: amt, Balance: amt})
+				debts = append(debts, models.Debt{ID: int(id), Customer: customerEntry.Text, Phone: phoneEntry.Text, Amount: amt, Balance: amt})
 			} else {
 				_, _ = db.Exec("UPDATE debts SET customer=?,phone=?,amount=? WHERE id=?",
 					customerEntry.Text, phoneEntry.Text, amt, d.ID)
@@ -234,7 +217,7 @@ func loadPayments() {
 	rows, _ := db.Query("SELECT id,customer,amount,balance FROM payments")
 	defer rows.Close()
 	for rows.Next() {
-		var p Payment
+		var p models.Payment
 		rows.Scan(&p.ID, &p.Customer, &p.Amount, &p.Balance)
 		payments = append(payments, p)
 	}
@@ -313,7 +296,7 @@ func buildPaymentTable() *widget.Table {
 	return table
 }
 
-func showPaymentDialog(p *Payment) {
+func showPaymentDialog(p *models.Payment) {
 	a := fyne.CurrentApp()
 	w := a.Driver().AllWindows()[0]
 
@@ -368,7 +351,7 @@ func showPaymentDialog(p *Payment) {
 				}
 
 				id, _ := res.LastInsertId()
-				payments = append(payments, Payment{ID: int(id), Customer: customerEntry.Selected, Amount: amt, Balance: newBalance})
+				payments = append(payments, models.Payment{ID: int(id), Customer: customerEntry.Selected, Amount: amt, Balance: newBalance})
 			} else {
 				// Update existing payment
 				_, err := db.Exec("UPDATE payments SET customer=?,amount=?,balance=? WHERE id=?",
