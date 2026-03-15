@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"moshe-debt/models"
+	"moshe-debt/tables"
 	"moshe-debt/utils"
 	"strconv"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -53,7 +53,7 @@ func buildDebtTab() fyne.CanvasObject {
 
 	addDebtBtn := widget.NewButton("Add Debt", func() { showDebtDialog(nil) })
 
-	debtTable = buildDebtTable()
+	debtTable = tables.BuildDebtTable(db, debts, debtTable)
 	debtContainer := container.NewVScroll(debtTable)
 	debtContainer.SetMinSize(fyne.NewSize(600, 300))
 
@@ -61,64 +61,6 @@ func buildDebtTab() fyne.CanvasObject {
 		container.NewHBox(addDebtBtn),
 		debtContainer,
 	)
-}
-
-func buildDebtTable() *widget.Table {
-	table := widget.NewTable(
-		func() (int, int) { return len(debts) + 1, 5 },
-		func() fyne.CanvasObject {
-			label := widget.NewLabel("template")
-			delBtn := widget.NewButtonWithIcon("", theme.DeleteIcon(), nil)
-			actions := container.NewHBox(delBtn)
-			return container.NewStack(label, actions)
-		},
-		func(id widget.TableCellID, obj fyne.CanvasObject) {
-			cell := obj.(*fyne.Container)
-			label := cell.Objects[0].(*widget.Label)
-			if id.Row == 0 {
-				headers := []string{"Customer", "Phone", "Amount", "Balance", "Actions"}
-				label.SetText(headers[id.Col])
-				label.Show()
-				cell.Objects[1].Hide()
-			} else {
-				debt := debts[id.Row-1]
-				switch id.Col {
-				case 0:
-					label.SetText(debt.Customer)
-					label.Show()
-					cell.Objects[1].Hide()
-				case 1:
-					label.SetText(debt.Phone)
-					label.Show()
-					cell.Objects[1].Hide()
-				case 2:
-					label.SetText(fmt.Sprintf("%.2f", debt.Amount))
-					label.Show()
-					cell.Objects[1].Hide()
-				case 3:
-					label.SetText(fmt.Sprintf("%.2f", debt.Balance))
-					label.Show()
-					cell.Objects[1].Hide()
-				case 4:
-					actions := cell.Objects[1].(*fyne.Container)
-					delBtn := actions.Objects[0].(*widget.Button)
-					delBtn.OnTapped = func() {
-						_, _ = db.Exec("DELETE FROM debts WHERE id=?", debt.ID)
-						loadDebts()
-						debtTable.Refresh()
-					}
-					actions.Show()
-					label.Hide()
-				}
-			}
-		},
-	)
-	table.SetColumnWidth(0, 200)
-	table.SetColumnWidth(1, 150)
-	table.SetColumnWidth(2, 100)
-	table.SetColumnWidth(3, 100)
-	table.SetColumnWidth(4, 150)
-	return table
 }
 
 func showDebtDialog(d *models.Debt) {
@@ -173,7 +115,7 @@ func buildPaymentTab() fyne.CanvasObject {
 
 	addPaymentBtn := widget.NewButton("Add Payment", func() { showPaymentDialog(nil) })
 
-	paymentTable = buildPaymentTable()
+	paymentTable = tables.BuildPaymentTable(db, payments, debts, paymentTable)
 	paymentContainer := container.NewVScroll(paymentTable)
 	paymentContainer.SetMinSize(fyne.NewSize(600, 300))
 
@@ -181,79 +123,6 @@ func buildPaymentTab() fyne.CanvasObject {
 		container.NewHBox(addPaymentBtn),
 		paymentContainer,
 	)
-}
-
-func buildPaymentTable() *widget.Table {
-	table := widget.NewTable(
-		func() (int, int) { return len(payments) + 1, 4 },
-		func() fyne.CanvasObject {
-			label := widget.NewLabel("template")
-			delBtn := widget.NewButtonWithIcon("", theme.DeleteIcon(), nil)
-			actions := container.NewHBox(delBtn)
-			return container.NewStack(label, actions)
-		},
-		func(id widget.TableCellID, obj fyne.CanvasObject) {
-			cell := obj.(*fyne.Container)
-			label := cell.Objects[0].(*widget.Label)
-			if id.Row == 0 {
-				headers := []string{"Customer", "Amount", "Balance", "Actions"}
-				label.SetText(headers[id.Col])
-				label.Show()
-				cell.Objects[1].Hide()
-			} else {
-				p := payments[id.Row-1]
-				switch id.Col {
-				case 0:
-					label.SetText(p.Customer)
-					label.Show()
-					cell.Objects[1].Hide()
-				case 1:
-					label.SetText(fmt.Sprintf("%.2f", p.Amount))
-					label.Show()
-					cell.Objects[1].Hide()
-				case 2:
-					label.SetText(fmt.Sprintf("%.2f", p.Balance))
-					label.Show()
-					cell.Objects[1].Hide()
-				case 3:
-					actions := cell.Objects[1].(*fyne.Container)
-					delBtn := actions.Objects[0].(*widget.Button)
-					delBtn.OnTapped = func() {
-						// Delete the payment
-						res, err := db.Exec("DELETE FROM payments WHERE id=?", p.ID)
-						if err != nil {
-							dialog.ShowError(fmt.Errorf("failed to delete payment: %v", err), fyne.CurrentApp().Driver().AllWindows()[0])
-							return
-						}
-
-						rowsAffected, _ := res.RowsAffected()
-						if rowsAffected > 0 {
-							// Add back the payment balance to the debt
-							_, err := db.Exec("UPDATE debts SET balance = balance + ? WHERE customer=?", p.Amount, p.Customer)
-							if err != nil {
-								dialog.ShowError(fmt.Errorf("failed to update debt balance: %v", err), fyne.CurrentApp().Driver().AllWindows()[0])
-								return
-							}
-						}
-
-						// Reload data and refresh tables
-						loadPayments()
-						loadDebts()
-						paymentTable.Refresh()
-						debtTable.Refresh()
-					}
-
-					actions.Show()
-					label.Hide()
-				}
-			}
-		},
-	)
-	table.SetColumnWidth(0, 200)
-	table.SetColumnWidth(1, 100)
-	table.SetColumnWidth(2, 100)
-	table.SetColumnWidth(3, 150)
-	return table
 }
 
 func loadDebts() {
